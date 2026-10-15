@@ -52,11 +52,11 @@ function buildLayout(): KeyLayout[] {
   return layout
 }
 
-export function Keyboard() {
+/** The 36 playable keys + particles; sized by the caller (big card or mini strip). */
+export function PianoKeys({ height }: { height: string }) {
   const layout = useMemo(buildLayout, [])
   const activeNotes = useStore((s) => s.activeNotes)
   const lastNote = useStore((s) => s.lastNote)
-  const chord = useStore((s) => s.chord)
   const ledColor = useStore((s) => s.ledColor)
   const scaleRoot = useStore((s) => s.scaleRoot)
   const scaleId = useStore((s) => s.scaleId)
@@ -107,42 +107,10 @@ export function Keyboard() {
     noteOff(midi)
   }
 
-  const readout = lastNote
-    ? {
-        name: pitchClassName(lastNote.note),
-        octave: octaveOf(lastNote.note),
-        full: noteName(lastNote.note),
-        vel: Math.round(lastNote.velocity * 127),
-      }
-    : null
-
   return (
-    <Card title="Performance Keyboard" icon="⌨" accent="#a855f7">
-      {/* Readout strip */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="flex items-baseline gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2">
-          <span className="text-2xl font-bold text-gradient">
-            {readout ? readout.full : '—'}
-          </span>
-          <span className="text-xs text-white/40">note</span>
-        </div>
-        <Stat label="Octave" value={readout ? `${readout.octave}` : '—'} />
-        <Stat label="Velocity" value={readout ? `${readout.vel}` : '—'} />
-        <div className="flex items-baseline gap-2 rounded-xl border border-brand-orange/30 bg-brand-orange/10 px-4 py-2">
-          <span className="text-lg font-bold text-brand-amber">
-            {chord ? chord.name : '—'}
-          </span>
-          <span className="text-xs text-white/40">chord</span>
-        </div>
-        <span className="ml-auto chip">
-          {Object.keys(activeNotes).length} keys held
-        </span>
-      </div>
-
-      {/* Keyboard */}
       <div
         className="relative w-full touch-none select-none"
-        style={{ height: 180 }}
+        style={{ height }}
         onPointerDown={() => (pointerDown.current = true)}
       >
         <Particles ref={particlesRef} />
@@ -227,6 +195,48 @@ export function Keyboard() {
             )
           })}
       </div>
+  )
+}
+
+export function Keyboard() {
+  const activeNotes = useStore((s) => s.activeNotes)
+  const lastNote = useStore((s) => s.lastNote)
+  const chord = useStore((s) => s.chord)
+
+  const readout = lastNote
+    ? {
+        name: pitchClassName(lastNote.note),
+        octave: octaveOf(lastNote.note),
+        full: noteName(lastNote.note),
+        vel: Math.round(lastNote.velocity * 127),
+      }
+    : null
+
+  return (
+    <Card title="Performance Keyboard" icon="⌨" accent="#a855f7">
+      {/* Readout strip */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex items-baseline gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2">
+          <span className="text-2xl font-bold text-gradient">
+            {readout ? readout.full : '—'}
+          </span>
+          <span className="text-xs text-white/40">note</span>
+        </div>
+        <Stat label="Octave" value={readout ? `${readout.octave}` : '—'} />
+        <Stat label="Velocity" value={readout ? `${readout.vel}` : '—'} />
+        <div className="flex items-baseline gap-2 rounded-xl border border-brand-orange/30 bg-brand-orange/10 px-4 py-2">
+          <span className="text-lg font-bold text-brand-amber">
+            {chord ? chord.name : '—'}
+          </span>
+          <span className="text-xs text-white/40">chord</span>
+        </div>
+        <span className="ml-auto chip">
+          {Object.keys(activeNotes).length} keys held
+        </span>
+      </div>
+
+      {/* Keyboard — keys scale to the container width on any screen */}
+      <PianoKeys height="clamp(110px, min(24vw, 40vh), 180px)" />
 
       <p className="mt-3 text-center text-[11px] text-white/35">
         Click / drag the keys to preview · 36 keys · C3–B5 · dots mark the selected scale

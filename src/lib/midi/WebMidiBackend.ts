@@ -30,19 +30,25 @@ export class WebMidiBackend implements MidiBackend {
   private callbacks: MidiBackendCallbacks = {}
 
   status: MidiConnectionStatus = 'idle'
+  /** False when access was granted without SysEx (LED SysEx silently skipped). */
+  sysexEnabled = false
   inputs: MidiDevice[] = []
   outputs: MidiDevice[] = []
   selectedInputId: string | null = null
   selectedOutputId: string | null = null
 
   constructor() {
-    if (typeof navigator === 'undefined' || !('requestMIDIAccess' in navigator)) {
-      this.status = 'unsupported'
-    }
+    // Support is NOT latched here: the PopuMusic WebView injects its Web MIDI
+    // polyfill from the native side, which may happen after page scripts run
+    // (older Android WebViews skip document-start injection entirely). Always
+    // re-probe at connect() time instead of locking in 'unsupported' once.
   }
 
   get supported(): boolean {
-    return this.status !== 'unsupported'
+    return (
+      typeof navigator !== 'undefined' &&
+      typeof navigator.requestMIDIAccess === 'function'
+    )
   }
 
   setCallbacks(cb: MidiBackendCallbacks) {
@@ -50,11 +56,31 @@ export class WebMidiBackend implements MidiBackend {
   }
 
   async connect(): Promise<MidiConnectionStatus> {
-    if (!this.supported) return 'unsupported'
+    if (this.status === 'denied') return this.status
+    // Wait briefly for the WebView-injected polyfill to appear before giving up.
+    const waitMs = 10000
+    const startedAt = Date.now()
+    while (!this.supported) {
+      if (Date.now() - startedAt >= waitMs) {
+        this.status = 'unsupported'
+        this.callbacks.onStateChange?.()
+        return this.status
+      }
+      await new Promise((r) => setTimeout(r, 150))
+    }
     this.status = 'requesting'
     this.callbacks.onStateChange?.()
     try {
-      this.access = await navigator.requestMIDIAccess({ sysex: true })
+      // LED control needs SysEx; degrade to plain notes if the host refuses.
+      try {
+        this.access = await navigator.requestMIDIAccess({ sysex: true })
+        this.sysexEnabled = true
+      } catch (sysexErr) {
+        // eslint-disable-next-line no-console
+        console.warn('[MIDI/web] sysex refused, retrying without', sysexErr)
+        this.access = await navigator.requestMIDIAccess({ sysex: false })
+        this.sysexEnabled = false
+      }
       this.status = 'ready'
       this.access.onstatechange = () => this.refresh()
       this.refresh()
@@ -81,6 +107,9 @@ export class WebMidiBackend implements MidiBackend {
     }
     this.rebindInput()
     this.callbacks.onStateChange?.()
+    // Devices may appear after connect() (BLE established later by the App);
+    // re-run auto-select on every state change like the reference impl.
+    this.autoSelect()
   }
 
   private autoSelect() {
@@ -113,8 +142,9 @@ export class WebMidiBackend implements MidiBackend {
   }
 
   private handleMessage = (e: MIDIMessageEvent) => {
-    const data = e.data
-    if (!data || data.length < 2) return
+    // Some hosts (Android/older WebViews) hand back plain arrays — normalize.
+    const data = new Uint8Array(e.data ?? [])
+    if (data.length < 2) return
     const status = data[0] & 0xf0
     const note = data[1]
     const velocity = data.length > 2 ? data[2] : 0
@@ -130,6 +160,7 @@ export class WebMidiBackend implements MidiBackend {
   }
 
   send(bytes: number[]): void {
+    if (bytes[0] === 0xf0 && !this.sysexEnabled) return // LED SysEx unavailable
     const out = this.getOutput()
     if (!out) return
     try {

@@ -3,6 +3,7 @@ import type { MidiConnectionStatus, MidiDevice } from '../types'
 import type { MidiBackend, MidiBackendCallbacks } from './MidiBackend'
 import { WebMidiBackend } from './WebMidiBackend'
 import { NativeMidiBackend } from './NativeMidiBackend'
+import { isPopuWebview } from '../popu/display'
 
 // ---------------------------------------------------------------------------
 // MIDI facade. Picks the right backend for the platform and exposes one stable
@@ -29,6 +30,14 @@ class MidiFacade {
   /** True when running as a native app with the Bluetooth pairing sheet. */
   get canPairBluetooth() {
     return this.backend.kind === 'native' && !!this.backend.presentBlePairing
+  }
+  /** True inside the PopuMusic MIDI Browser WebView. */
+  get isPopuWebview() {
+    return isPopuWebview()
+  }
+  /** Popu WebView: open the app's Bluetooth-MIDI page via popumidi://action. */
+  get canOpenAppBluetooth() {
+    return this.backend.kind === 'web' && isPopuWebview()
   }
   get status(): MidiConnectionStatus {
     return this.backend.status

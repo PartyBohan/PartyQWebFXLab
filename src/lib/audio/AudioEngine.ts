@@ -26,23 +26,29 @@ export class AudioEngine {
   private started = false
   private builtFx = false
 
-  /** Must be called from a user gesture (button click) before any sound. */
+  /**
+   * Safe to call repeatedly: once on load (works where autoplay is allowed,
+   * e.g. the Capacitor WKWebView) and again from a user gesture otherwise.
+   * The context is built once; each call only retries resume().
+   */
   async start(): Promise<void> {
     if (this.started) return
 
-    // Low-latency interactive context: the browser/WKWebView picks the smallest
-    // safe output buffer. Pair this with AppDelegate's small IO buffer on iOS.
-    const ctx = new Tone.Context({ latencyHint: 'interactive' })
-    // lookAhead = 0 → notes triggered "now" play as soon as possible (live feel).
-    // The web-audio output buffer is the only remaining latency. Keep updateInterval
-    // small so envelopes/automation stay smooth without adding scheduling delay.
-    ctx.lookAhead = 0
-    ctx.updateInterval = 0.02
-    Tone.setContext(ctx)
-    await Tone.start()
+    if (!this.builtFx) {
+      // Low-latency interactive context: the browser/WKWebView picks the smallest
+      // safe output buffer. Pair this with AppDelegate's small IO buffer on iOS.
+      const ctx = new Tone.Context({ latencyHint: 'interactive' })
+      // lookAhead = 0 → notes triggered "now" play as soon as possible (live feel).
+      // The web-audio output buffer is the only remaining latency. Keep updateInterval
+      // small so envelopes/automation stay smooth without adding scheduling delay.
+      ctx.lookAhead = 0
+      ctx.updateInterval = 0.02
+      Tone.setContext(ctx)
+      this.buildFxChain()
+    }
 
-    this.buildFxChain()
-    this.started = true
+    await Tone.start()
+    if (Tone.getContext().state === 'running') this.started = true
   }
 
   get isStarted(): boolean {

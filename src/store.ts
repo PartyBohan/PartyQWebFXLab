@@ -47,6 +47,8 @@ interface AppState {
   selectedOutputId: string | null
   /** Running inside the native iOS/Android shell (vs a browser). */
   isNativeApp: boolean
+  /** Running inside the PopuMusic MIDI Browser WebView. */
+  isPopuWebview: boolean
   /** Native build can present the system Bluetooth-MIDI pairing sheet. */
   canPairBluetooth: boolean
 
@@ -196,6 +198,7 @@ export const useStore = create<AppState>((set, get) => {
     selectedInputId: null,
     selectedOutputId: null,
     isNativeApp: midiEngine.kind === 'native',
+    isPopuWebview: midiEngine.isPopuWebview,
     canPairBluetooth: midiEngine.canPairBluetooth,
 
     activeNotes: {},
@@ -223,6 +226,7 @@ export const useStore = create<AppState>((set, get) => {
     startAudio: async () => {
       if (get().audioStarted) return
       await audioEngine.start()
+      if (!audioEngine.isStarted) return // blocked until a user gesture
       const preset = getPreset(get().presetId)
       audioEngine.setPreset(preset, get().adsr)
       audioEngine.updateFx(get().fx)

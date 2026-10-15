@@ -2,13 +2,38 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" type="image/png" href="/assets/brand/logo-mark.png" />
     <title>PartyKeys Web FX Lab</title>
     <meta name="description" content="Browser-based performance interface for the PartyKeys MIDI keyboard — synths, real-time DSP, and LED light control." />
+    <style>
+      /* First-paint placeholder shown until the JS bundle parses and React
+         mounts — replaces the previous blank white WebView frame. */
+      #boot {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(1100px 700px at 12% -8%, rgba(59, 130, 246, 0.18), transparent 60%),
+          radial-gradient(1000px 700px at 88% 0%, rgba(168, 85, 247, 0.18), transparent 60%),
+          #070710;
+      }
+      #boot i {
+        width: 34px;
+        height: 34px;
+        border-radius: 9999px;
+        border: 3px solid rgba(139, 92, 246, 0.25);
+        border-top-color: #8b5cf6;
+        animation: boot-spin 0.9s linear infinite;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot"><i></i></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

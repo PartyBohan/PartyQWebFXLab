@@ -7,6 +7,20 @@
 @layer base {
   :root {
     color-scheme: dark;
+    /* PopuMusic WebView safe areas (integration doc §7) — controls only,
+       never padded onto html/body so the background fills the screen. */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --control-gap: 16px;
+  }
+
+  .safe-controls {
+    padding-top: calc(var(--safe-top) + var(--control-gap));
+    padding-right: calc(var(--safe-right) + var(--control-gap));
+    padding-bottom: calc(var(--safe-bottom) + var(--control-gap));
+    padding-left: calc(var(--safe-left) + var(--control-gap));
   }
 
   html,
